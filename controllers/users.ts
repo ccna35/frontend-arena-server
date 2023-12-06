@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { connection } from "../db/db";
-import { generateToken } from "../util/token";
+import { UserRequest, generateToken } from "../util/token";
 import { User } from "../types/types";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 require("dotenv").config();
@@ -47,43 +47,24 @@ const signup = async (req: Request, res: Response) => {
             } else {
               console.log("insertId: ", insertResult.insertId);
 
-              // Add an uncategorized category every time a new user signs up
-              const category_details = [
-                [insertResult.insertId, "Uncategorized"],
-              ];
-              const uncategorizedQuery =
-                "INSERT INTO categories(user_id, category_name) VALUES ?";
+              const token = await generateToken(insertResult.insertId);
 
-              connection.query(
-                uncategorizedQuery,
-                [category_details],
-                async (err, results) => {
-                  if (err) {
-                    console.log(err);
-                    res.status(500).send("Internal Server Error");
-                  } else {
-                    console.log("results", results);
-                    const token = await generateToken(insertResult.insertId);
-
-                    res.cookie("jwt", token, {
-                      httpOnly: true,
-                      secure: true,
-                      sameSite: "none",
-                      maxAge: 7 * 24 * 60 * 60 * 1000,
-                    });
-                    res.status(200).json({
-                      message: "User signed up successfully",
-                      user: {
-                        id: insertResult.insertId,
-                        firstName,
-                        lastName,
-                        username,
-                        email,
-                      },
-                    });
-                  }
-                }
-              );
+              res.cookie("jwt", token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: "none",
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+              });
+              res.status(200).json({
+                message: "User signed up successfully",
+                user: {
+                  id: insertResult.insertId,
+                  firstName,
+                  lastName,
+                  username,
+                  email,
+                },
+              });
             }
           }
         );
@@ -138,10 +119,10 @@ const logout = (req: Request, res: Response) => {
   res.status(200).json({ message: "User logged out successfully" });
 };
 
-const updateUser = (req: Request, res: Response) => {
-  const userId = req.params.id;
+const updateUser = (req: UserRequest, res: Response) => {
+  // const userId = req.params.id;
 
-  console.log("userId", userId);
+  const userId = req.user;
 
   const { firstName, lastName } = req.body;
 

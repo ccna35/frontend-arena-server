@@ -1,4 +1,4 @@
-import { Request, Response, Router } from "express";
+import { Router } from "express";
 import {
   getAllUsers,
   getOneUser,
@@ -20,16 +20,16 @@ router.post("/login", login);
 // Logout
 router.get("/logout", logout);
 
+// Get a single user
+router.get("/:id", getOneUser);
+
+// Get all users
+router.get("/", getAllUsers);
+
 // Middleware
 router.use(verifyToken);
 
-// Get a single user
-router.get("/:id", verifyToken, getOneUser);
-
-// Get all users
-router.get("/", verifyToken, getAllUsers);
-
 // Update user route
-router.put("/:id", verifyToken, updateUser);
+router.put("/", updateUser);
 
 export default router;

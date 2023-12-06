@@ -3,30 +3,45 @@ import { connection } from "../db/db";
 import { UserRequest } from "../util/token";
 import { ResultSetHeader } from "mysql2";
 
-const createNote = (req: UserRequest, res: Response) => {
+const createChallenge = (req: UserRequest, res: Response) => {
   console.log(req.body);
+  const {
+    challenge_title,
+    brief_description,
+    challenge_description,
+    extra_tips,
+    figma,
+    featured_image,
+    difficulty_level,
+  } = req.body;
 
-  const user_id = req.user;
-
-  const { note_title, note_body, isPinned, category } = req.body;
-
-  const note_details = [[user_id, note_title, note_body, isPinned, category]];
+  const challenge_details = [
+    [
+      challenge_title,
+      brief_description,
+      challenge_description,
+      extra_tips,
+      figma,
+      featured_image,
+      difficulty_level,
+    ],
+  ];
 
   const query =
-    "INSERT INTO notes(user_id, note_title, note_body, isPinned, category) VALUES ?";
+    "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
 
-  connection.query(query, [note_details], (err, results, fields) => {
+  connection.query(query, [challenge_details], (err, results, fields) => {
     if (err) {
       console.log(err);
       res.status(500).send("Internal Server Error");
     } else {
-      res.status(200).json({ message: "Note was created successfully" });
+      res.status(200).json({ message: "Challenge was created successfully" });
     }
   });
 };
 
-const updateNote = (req: UserRequest, res: Response) => {
-  const note_id = req.params.id;
+const updateChallenge = (req: UserRequest, res: Response) => {
+  const challenge_id = req.params.id;
   const user_id = req.user;
 
   const { note_title, note_body, isPinned, category } = req.body;
@@ -34,7 +49,7 @@ const updateNote = (req: UserRequest, res: Response) => {
   const query =
     "UPDATE notes SET note_title = ?, note_body = ?, isPinned = ?, category = ? WHERE user_id = ? AND id = ?";
 
-  const newData = [note_title, note_body, isPinned, category, user_id, note_id];
+  const newData = [note_title, note_body, isPinned, category];
 
   connection.query<ResultSetHeader>(query, newData, (err, result) => {
     if (err) {
@@ -48,7 +63,7 @@ const updateNote = (req: UserRequest, res: Response) => {
   });
 };
 
-const deleteNote = (req: UserRequest, res: Response) => {
+const deleteChallenge = (req: UserRequest, res: Response) => {
   const note_id = req.params.id;
   const user_id = req.user;
 
@@ -71,31 +86,31 @@ const deleteNote = (req: UserRequest, res: Response) => {
   );
 };
 
-const getAllNotesByUser = (req: UserRequest, res: Response) => {
-  const user = req.params.id;
+// const getAllChallenges = (req: UserRequest, res: Response) => {
+//   const user = req.params.id;
 
-  const { search, isPinned, category } = req.query;
+//   const { search, isPinned, category } = req.query;
 
-  const query = `SELECT n.id, n.user_id, n.note_title, n.note_body, n.isPinned, c.category_name, n.createdAt FROM notes AS n JOIN categories AS c ON n.category = c.id WHERE n.user_id = ${user} AND (n.note_title LIKE '%${search}%' OR n.note_body LIKE '%${search}%') ${
-    !["0", ""].includes(category as string)
-      ? "AND n.category = " + category
-      : ""
-  } ORDER BY n.createdAt DESC`;
+//   const query = `SELECT n.id, n.user_id, n.note_title, n.note_body, n.isPinned, c.category_name, n.createdAt FROM notes AS n JOIN categories AS c ON n.category = c.id WHERE n.user_id = ${user} AND (n.note_title LIKE '%${search}%' OR n.note_body LIKE '%${search}%') ${
+//     !["0", ""].includes(category as string)
+//       ? "AND n.category = " + category
+//       : ""
+//   } ORDER BY n.createdAt DESC`;
 
-  // AND n.isPinned = ${isPinned}
+//   // AND n.isPinned = ${isPinned}
 
-  connection.query(query, (err, results) => {
-    if (err) {
-      console.log(err);
+//   connection.query(query, (err, results) => {
+//     if (err) {
+//       console.log(err);
 
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json(results);
-    }
-  });
-};
+//       res.status(500).send("Internal Server Error");
+//     } else {
+//       res.status(200).json(results);
+//     }
+//   });
+// };
 
-const getAllNotes = (req: Request, res: Response) => {
+const getAllChallenges = (req: Request, res: Response) => {
   const query = "SELECT * FROM `notes`";
 
   connection.query(query, (err, results) => {
@@ -107,23 +122,23 @@ const getAllNotes = (req: Request, res: Response) => {
   });
 };
 
-const getNotesByCategory = (req: UserRequest, res: Response) => {
-  const user_id = req.user;
+// const getChallengesByCategory = (req: UserRequest, res: Response) => {
+//   const user_id = req.user;
 
-  const category = req.params.id;
+//   const category = req.params.id;
 
-  const query = "SELECT * FROM `notes` WHERE user_id = ? AND category = ?";
+//   const query = "SELECT * FROM `notes` WHERE user_id = ? AND category = ?";
 
-  connection.query(query, [user_id, category], (err, results) => {
-    if (err) {
-      console.log(err);
+//   connection.query(query, [user_id, category], (err, results) => {
+//     if (err) {
+//       console.log(err);
 
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json(results);
-    }
-  });
-};
+//       res.status(500).send("Internal Server Error");
+//     } else {
+//       res.status(200).json(results);
+//     }
+//   });
+// };
 
 // const getNotesByQuery = (req: UserRequest, res: Response) => {
 //   const user_id = req.user;
@@ -144,7 +159,7 @@ const getNotesByCategory = (req: UserRequest, res: Response) => {
 //   });
 // };
 
-const getOneNote = (req: Request, res: Response) => {
+const getOneChallenge = (req: Request, res: Response) => {
   const note_id = req.params.id;
 
   console.log(req.params);
@@ -162,11 +177,9 @@ const getOneNote = (req: Request, res: Response) => {
 };
 
 export {
-  createNote,
-  getAllNotes,
-  updateNote,
-  getOneNote,
-  deleteNote,
-  getNotesByCategory,
-  getAllNotesByUser,
+  createChallenge,
+  getAllChallenges,
+  updateChallenge,
+  getOneChallenge,
+  deleteChallenge,
 };
