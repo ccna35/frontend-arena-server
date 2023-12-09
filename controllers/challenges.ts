@@ -3,15 +3,42 @@ import { connection } from "../db/db";
 import { UserRequest } from "../util/token";
 import { ResultSetHeader } from "mysql2";
 
-const createChallenge = (req: UserRequest, res: Response) => {
-  console.log(req.body);
+import { v2 as cloudinary } from "cloudinary";
+// require("dotenv").config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_KEY_SECRET,
+});
+
+const createChallenge = async (req: UserRequest, res: Response) => {
+  const files = req.files as Express.Multer.File[];
+
+  type UploadedImageType = { type: string; url: string };
+
+  const image_URLs: UploadedImageType[] = [];
+
+  await Promise.all(
+    files.map(async (file) => {
+      const b64 = Buffer.from(file.buffer).toString("base64");
+      let dataURI = "data:" + file.mimetype + ";base64," + b64;
+      const res = await cloudinary.uploader.upload(dataURI, {
+        resource_type: "image",
+        format: "webp",
+      });
+      image_URLs.push({ type: file.fieldname, url: res.secure_url });
+    })
+  );
+
+  console.log(image_URLs);
+
   const {
     challenge_title,
     brief_description,
     challenge_description,
     extra_tips,
     figma,
-    featured_image,
     difficulty_level,
   } = req.body;
 
@@ -22,22 +49,42 @@ const createChallenge = (req: UserRequest, res: Response) => {
       challenge_description,
       extra_tips,
       figma,
-      featured_image,
+      image_URLs.filter((img) => img.type === "featured"),
       difficulty_level,
     ],
   ];
 
-  const query =
+  const newChallengeQuery =
     "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
 
-  connection.query(query, [challenge_details], (err, results, fields) => {
-    if (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json({ message: "Challenge was created successfully" });
+  connection.query(
+    newChallengeQuery,
+    [challenge_details],
+    (err, results, fields) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send("Internal Server Error");
+      } else {
+        res.status(200).json({ message: "Challenge was created successfully" });
+      }
     }
-  });
+  );
+
+  const challengeImagesQuery =
+    "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
+
+  connection.query(
+    challengeImagesQuery,
+    [challenge_details],
+    (err, results, fields) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send("Internal Server Error");
+      } else {
+        res.status(200).json({ message: "Challenge was created successfully" });
+      }
+    }
+  );
 };
 
 const updateChallenge = (req: UserRequest, res: Response) => {
