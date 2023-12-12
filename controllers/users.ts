@@ -1,175 +1,184 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { connection } from "../db/db";
+import { pool } from "../db/db";
 import { UserRequest, generateToken } from "../util/token";
-import { User } from "../types/types";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 require("dotenv").config();
+
+const RESPONSE_MESSAGES = {
+  500: "Internal Server Error",
+  404: "User not found",
+};
 
 const signup = async (req: Request, res: Response) => {
   const { firstName, lastName, email, username, password } = req.body;
 
+  // Check if user already exists
   const checkQuery =
     "SELECT * FROM user_accounts WHERE email = ? OR username = ?";
-  connection.query<RowDataPacket[]>(
-    checkQuery,
-    [email, username],
-    (checkErr, checkResult) => {
-      if (checkErr) {
-        console.log(checkErr);
 
-        res.status(500).send("Internal Server Error");
-      } else if (checkResult.length > 0) {
-        console.log("User with this email or username already exists");
-        res.status(400).send("User with this email or username already exists");
-      } else {
-        const hashedPassword = bcrypt.hashSync(password, 10);
-        const user: User = {
-          firstName,
-          lastName,
-          email,
-          username,
-          password: hashedPassword,
-        };
-        const values = [[firstName, lastName, email, username, hashedPassword]];
-        const query = `INSERT INTO user_accounts(firstName,
+  try {
+    const result = await pool.query<RowDataPacket[]>(checkQuery, [
+      email,
+      username,
+    ]);
+
+    console.log(result);
+
+    // This user already exists
+    if (result[0].length > 0) {
+      return res
+        .status(400)
+        .send("User with this email or username already exists");
+    }
+
+    // Sign up a new user
+    const hashedPassword = bcrypt.hashSync(password, 10);
+
+    const values = [[firstName, lastName, email, username, hashedPassword]];
+
+    const insertNewUserQuery = `INSERT INTO user_accounts(firstName,
       lastName,
       email,
       username,
       user_password) VALUES ?`;
-        connection.query<ResultSetHeader>(
-          query,
-          [values],
-          async (insertErr, insertResult) => {
-            if (insertErr) {
-              console.log(insertErr);
-              res.status(500).send("Internal Server Error");
-            } else {
-              console.log("insertId: ", insertResult.insertId);
 
-              const token = await generateToken(insertResult.insertId);
+    const [{ insertId: user_id }] = await pool.query<ResultSetHeader>(
+      insertNewUserQuery,
+      [values]
+    );
 
-              res.cookie("jwt", token, {
-                httpOnly: true,
-                secure: true,
-                sameSite: "none",
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-              });
-              res.status(200).json({
-                message: "User signed up successfully",
-                user: {
-                  id: insertResult.insertId,
-                  firstName,
-                  lastName,
-                  username,
-                  email,
-                },
-              });
-            }
-          }
-        );
-      }
-    }
-  );
+    console.log(user_id);
+
+    // Generating an access token
+    const token = await generateToken(user_id);
+
+    // Attaching the token to the response in httpOnly cookie
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      message: "User signed up successfully",
+      user: {
+        id: user_id,
+        firstName,
+        lastName,
+        username,
+        email,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).send(RESPONSE_MESSAGES["500"]);
+  }
 };
 
-const login = (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  const query = "SELECT * FROM user_accounts WHERE email = ?";
-  connection.query<RowDataPacket[]>(query, [email], (err, result) => {
-    if (err) {
-      res.status(500).send("Internal Server Error");
+const login = async (req: Request, res: Response) => {
+  const { email: user_email, password } = req.body;
+  const checkQuery = "SELECT * FROM user_accounts WHERE email = ?";
+  try {
+    const checkResult = await pool.query<RowDataPacket[]>(checkQuery, [
+      user_email,
+    ]);
+    if (checkResult[0].length === 0) {
+      return res.status(404).send(RESPONSE_MESSAGES["404"]);
     }
-    if (result.length === 0) {
-      res.status(401).send("User not found");
-    } else {
-      console.log(result);
 
-      const user = result[0];
-      const { id, firstName, lastName, username, email, createdAt } = result[0];
-      bcrypt.compare(password, user.user_password, async (err, isMatch) => {
-        if (err) {
-          throw err;
-        }
-        if (isMatch) {
-          const token = await generateToken(id);
+    const user = checkResult[0][0];
 
-          res.cookie("jwt", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-          });
+    const { id, firstName, lastName, username, email, createdAt } = user;
 
-          res.status(200).send({
-            message: "Login Successful",
-            user: { id, firstName, lastName, username, email, createdAt },
-          });
-        } else {
-          res.status(401).send("Invalid credentials");
-        }
+    const doPasswordsMatch = await bcrypt.compare(password, user.user_password);
+
+    if (doPasswordsMatch) {
+      const token = await generateToken(id);
+
+      res.cookie("jwt", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
+
+      return res.status(200).send({
+        message: "Login Successful",
+        user: { id, firstName, lastName, username, email, createdAt },
+      });
+    } else {
+      return res.status(401).send("Invalid credentials");
     }
-  });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send(RESPONSE_MESSAGES["500"]);
+  }
 };
 
 const logout = (req: Request, res: Response) => {
   res.clearCookie("jwt");
 
-  res.status(200).json({ message: "User logged out successfully" });
+  return res.status(200).json({ message: "User logged out successfully" });
 };
 
-const updateUser = (req: UserRequest, res: Response) => {
-  // const userId = req.params.id;
-
+const updateUser = async (req: UserRequest, res: Response) => {
   const userId = req.user;
 
   const { firstName, lastName } = req.body;
 
-  const newData = [firstName, lastName, userId];
+  const newData = [{ firstName, lastName }, userId];
 
+  const query = "UPDATE user_accounts SET ? WHERE id = ?";
+
+  try {
+    const [result] = await pool.query<ResultSetHeader>(query, newData);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: RESPONSE_MESSAGES["404"] });
+    }
+
+    return res.status(200).send("User updated successfully");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(RESPONSE_MESSAGES["500"]);
+  }
+};
+
+const getAllUsers = async (req: Request, res: Response) => {
   const query =
-    "UPDATE user_accounts SET firstName = ?, lastName = ? WHERE id = ?";
+    "SELECT id, firstName, lastName, email, username, createdAt FROM `user_accounts`";
 
-  connection.query<ResultSetHeader>(query, newData, (err, result) => {
-    if (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
-    } else if (result.affectedRows === 0) {
-      res.status(404).send("User not found");
-    } else {
-      res.status(200).send("User updated successfully");
-    }
-  });
+  try {
+    const result = await pool.query<ResultSetHeader>(query);
+    console.log(result[0]);
+
+    return res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send(RESPONSE_MESSAGES["500"]);
+  }
 };
 
-const getAllUsers = (req: Request, res: Response) => {
-  connection.query(
-    "SELECT id, firstName, lastName, email, username, createdAt FROM `user_accounts`",
-    (err, results) => {
-      if (err) {
-        res.status(500).send("Internal Server Error");
-      } else {
-        res.status(200).json(results);
-      }
-    }
-  );
-};
-
-const getOneUser = (req: Request, res: Response) => {
+const getOneUser = async (req: Request, res: Response) => {
   const { id: userId } = req.params;
 
   const query =
     "SELECT id, firstName, lastName, email, username, createdAt FROM `user_accounts` WHERE id = ?";
 
-  connection.query(query, [userId], (err, results) => {
-    if (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json(results);
-    }
-  });
+  try {
+    const result = await pool.query<ResultSetHeader[]>(query, [userId]);
+    console.log(result);
+
+    if (result[0].length === 0)
+      return res.status(404).json({ message: RESPONSE_MESSAGES["404"] });
+
+    return res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send(RESPONSE_MESSAGES["500"]);
+  }
 };
 
-export { login, signup, logout, updateUser, getAllUsers, getOneUser };
+export { signup, login, logout, updateUser, getAllUsers, getOneUser };

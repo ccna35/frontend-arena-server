@@ -10,4 +10,4 @@ const access: ConnectionOptions = {
   password: process.env.PASSWORD,
 };
 
-export const connection = mysql.createConnection(access);
+export const pool = mysql.createPool(access).promise();

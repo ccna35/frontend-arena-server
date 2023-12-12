@@ -3,9 +3,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import bodyParser from "body-parser";
-import multer from "multer";
-import path from "node:path";
-import fs from "node:fs";
 
 // routes
 import users from "./routes/users";
@@ -43,25 +40,6 @@ app.use(
 //   // req.body will hold the text fields, if there were any
 //   console.log(req.files);
 //   res.send("Done");
-// });
-
-// app.get("/images/:id", (req, res) => {
-//   // res.send(fs.readFileSync("/uploads/170181381324116GB_RAM_Receipt.jpg"));
-//   fs.readFile(
-//     `./uploads/170181381324116GB_RAM_Receipt.jpg`,
-
-//     function (err, image) {
-//       if (err) {
-//         throw err;
-//       }
-//       console.log(image);
-
-//       res.setHeader("Content-Type", "image/jpg");
-//       // res.setHeader("Content-Length", ""); // Image size here
-//       // res.setHeader("Access-Control-Allow-Origin", "*"); // If needs to be public
-//       res.send(image);
-//     }
-//   );
 // });
 
 // Routes

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { connection } from "../db/db";
+import { pool } from "../db/db";
 import { UserRequest } from "../util/token";
 import { ResultSetHeader } from "mysql2";
 
@@ -12,10 +12,10 @@ cloudinary.config({
   api_secret: process.env.CLOUD_KEY_SECRET,
 });
 
-const createChallenge = async (req: UserRequest, res: Response) => {
-  const files = req.files as Express.Multer.File[];
+type UploadedImageType = { type: string; url: string };
 
-  type UploadedImageType = { type: string; url: string };
+async function uploadMultipleImages(req: Request) {
+  const files = req.files as Express.Multer.File[];
 
   const image_URLs: UploadedImageType[] = [];
 
@@ -31,7 +31,11 @@ const createChallenge = async (req: UserRequest, res: Response) => {
     })
   );
 
-  console.log(image_URLs);
+  return image_URLs;
+}
+
+const createChallenge = async (req: Request, res: Response) => {
+  const image_URLs = await uploadMultipleImages(req);
 
   const {
     challenge_title,
@@ -49,124 +53,159 @@ const createChallenge = async (req: UserRequest, res: Response) => {
       challenge_description,
       extra_tips,
       figma,
-      image_URLs.filter((img) => img.type === "featured"),
+      image_URLs.filter((img) => img.type === "featured")[0].url,
       difficulty_level,
     ],
   ];
 
-  const newChallengeQuery =
-    "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
+  try {
+    // Insert a new challenge
+    const newChallengeQuery =
+      "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
+    const [{ insertId }] = await pool.query<ResultSetHeader>(
+      newChallengeQuery,
+      [challenge_details]
+    );
 
-  connection.query(
-    newChallengeQuery,
-    [challenge_details],
-    (err, results, fields) => {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Internal Server Error");
-      } else {
-        res.status(200).json({ message: "Challenge was created successfully" });
-      }
-    }
-  );
+    const challenge_images_details = [
+      [1, image_URLs.filter((img) => img.type === "desktop")[0].url, insertId],
+      [
+        2,
+        image_URLs.filter((img) => img.type === "tablet")[0]?.url || null,
+        insertId,
+      ],
+      [
+        3,
+        image_URLs.filter((img) => img.type === "mobile")[0]?.url || null,
+        insertId,
+      ],
+    ];
 
-  const challengeImagesQuery =
-    "INSERT INTO challenges(challenge_title,brief_description,challenge_description,extra_tips,figma,featured_image,difficulty_level) VALUES ?";
-
-  connection.query(
-    challengeImagesQuery,
-    [challenge_details],
-    (err, results, fields) => {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Internal Server Error");
-      } else {
-        res.status(200).json({ message: "Challenge was created successfully" });
-      }
-    }
-  );
+    // Insert challenge images
+    const challengeImagesQuery =
+      "INSERT INTO challenge_images(image_type,image_link,challenge_id) VALUES ?";
+    await pool.query(challengeImagesQuery, [challenge_images_details]);
+    return res
+      .status(200)
+      .json({ message: "Challenge was created successfully" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
 };
 
-const updateChallenge = (req: UserRequest, res: Response) => {
+const updateChallenge = async (req: UserRequest, res: Response) => {
   const challenge_id = req.params.id;
-  const user_id = req.user;
 
-  const { note_title, note_body, isPinned, category } = req.body;
+  const {
+    challenge_title,
+    brief_description,
+    challenge_description,
+    extra_tips,
+    figma,
+    featured_image,
+    difficulty_level,
+  } = req.body;
 
-  const query =
-    "UPDATE notes SET note_title = ?, note_body = ?, isPinned = ?, category = ? WHERE user_id = ? AND id = ?";
+  const image_URLs = await uploadMultipleImages(req);
 
-  const newData = [note_title, note_body, isPinned, category];
+  const updated_challenge_details = {
+    challenge_title,
+    brief_description,
+    challenge_description,
+    extra_tips,
+    figma,
+    featured_image:
+      image_URLs.filter((img) => img.type === "featured")[0].url ||
+      featured_image,
+    difficulty_level,
+  };
 
-  connection.query<ResultSetHeader>(query, newData, (err, result) => {
-    if (err) {
-      console.log(err);
-      res.status(500).json({ message: "Internal Server Error" });
-    } else if (result.affectedRows === 0) {
-      res.status(404).json({ message: "Note not found" });
-    } else {
-      res.status(200).json({ message: "Note updated successfully" });
+  try {
+    // Update a challenge
+    const updatedChallengeQuery = "UPDATE challenges SET ? WHERE id = ?";
+    await pool.query<ResultSetHeader>(updatedChallengeQuery, [
+      updated_challenge_details,
+      challenge_id,
+    ]);
+
+    for (let i = 0; i < image_URLs.length; i++) {
+      const updated_challenge_images_details = {
+        image_link: image_URLs[i].url,
+      };
+
+      // Update challenge images
+      const challengeImagesQuery =
+        "UPDATE challenge_images SET ? WHERE challenge_id = ? AND image_type = ?";
+      await pool.query(challengeImagesQuery, [
+        updated_challenge_images_details,
+        challenge_id,
+        image_URLs[i].type === "desktop"
+          ? 1
+          : image_URLs[i].type === "tablet"
+          ? 2
+          : 3,
+      ]);
     }
-  });
+
+    return res
+      .status(200)
+      .json({ message: "Challenge was updated successfully" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
 };
 
-const deleteChallenge = (req: UserRequest, res: Response) => {
-  const note_id = req.params.id;
-  const user_id = req.user;
+const deleteChallenge = async (req: Request, res: Response) => {
+  const challenge_id = req.params.id;
 
-  console.log(user_id);
+  const deleteQuery = "DELETE FROM challenges WHERE id = ?";
 
-  const deleteQuery = "DELETE FROM notes WHERE id = ? AND user_id = ?";
+  try {
+    const result = await pool.query<ResultSetHeader>(deleteQuery, [
+      challenge_id,
+    ]);
+    console.log(result);
 
-  connection.query<ResultSetHeader>(
-    deleteQuery,
-    [note_id, user_id],
-    (err, result) => {
-      if (err) {
-        res.status(500).send("Internal Server Error");
-      } else if (result.affectedRows === 0) {
-        res.status(404).json({ message: "Note not found" });
-      } else {
-        res.status(200).json({ message: "Note deleted successfully" });
-      }
+    if (result[0].affectedRows === 0) {
+      return res.status(404).json({ message: "Challenge cannot be found!" });
     }
-  );
+    return res.status(200).json({ message: "Challenge deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
 };
 
-// const getAllChallenges = (req: UserRequest, res: Response) => {
-//   const user = req.params.id;
+const getAllChallenges = async (req: Request, res: Response) => {
+  const query = "SELECT * FROM challenges";
 
-//   const { search, isPinned, category } = req.query;
+  try {
+    const result = await pool.query<ResultSetHeader>(query);
+    console.log(result[0]);
 
-//   const query = `SELECT n.id, n.user_id, n.note_title, n.note_body, n.isPinned, c.category_name, n.createdAt FROM notes AS n JOIN categories AS c ON n.category = c.id WHERE n.user_id = ${user} AND (n.note_title LIKE '%${search}%' OR n.note_body LIKE '%${search}%') ${
-//     !["0", ""].includes(category as string)
-//       ? "AND n.category = " + category
-//       : ""
-//   } ORDER BY n.createdAt DESC`;
+    return res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
+};
 
-//   // AND n.isPinned = ${isPinned}
+const getOneChallenge = async (req: Request, res: Response) => {
+  const challenge_id = req.params.id;
 
-//   connection.query(query, (err, results) => {
-//     if (err) {
-//       console.log(err);
+  const query = "SELECT * FROM challenges WHERE id = ?";
 
-//       res.status(500).send("Internal Server Error");
-//     } else {
-//       res.status(200).json(results);
-//     }
-//   });
-// };
+  try {
+    const result = await pool.query<ResultSetHeader>(query, [challenge_id]);
+    console.log(result[0]);
 
-const getAllChallenges = (req: Request, res: Response) => {
-  const query = "SELECT * FROM `notes`";
-
-  connection.query(query, (err, results) => {
-    if (err) {
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json(results);
-    }
-  });
+    return res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
 };
 
 // const getChallengesByCategory = (req: UserRequest, res: Response) => {
@@ -206,27 +245,10 @@ const getAllChallenges = (req: Request, res: Response) => {
 //   });
 // };
 
-const getOneChallenge = (req: Request, res: Response) => {
-  const note_id = req.params.id;
-
-  console.log(req.params);
-
-  const query = "SELECT * FROM `notes` WHERE id = ?";
-  connection.query(query, [note_id], (err, results) => {
-    if (err) {
-      console.log(err);
-
-      res.status(500).send("Internal Server Error");
-    } else {
-      res.status(200).json(results);
-    }
-  });
-};
-
 export {
   createChallenge,
-  getAllChallenges,
   updateChallenge,
-  getOneChallenge,
   deleteChallenge,
+  getAllChallenges,
+  getOneChallenge,
 };
