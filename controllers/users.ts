@@ -3,7 +3,6 @@ import bcrypt from "bcrypt";
 import { pool } from "../db/db";
 import { UserRequest, generateToken } from "../util/token";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
-require("dotenv").config();
 
 const RESPONSE_MESSAGES = {
   500: "Internal Server Error",
@@ -61,7 +60,7 @@ const signup = async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({
+    return res.status(201).json({
       message: "User signed up successfully",
       user: {
         id: user_id,
@@ -80,6 +79,7 @@ const signup = async (req: Request, res: Response) => {
 
 const login = async (req: Request, res: Response) => {
   const { email: user_email, password } = req.body;
+
   const checkQuery = "SELECT * FROM user_accounts WHERE email = ?";
   try {
     const checkResult = await pool.query<RowDataPacket[]>(checkQuery, [
@@ -152,7 +152,6 @@ const getAllUsers = async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query<ResultSetHeader>(query);
-    console.log(result[0]);
 
     return res.status(200).json(result[0]);
   } catch (error) {
@@ -169,7 +168,6 @@ const getOneUser = async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query<ResultSetHeader[]>(query, [userId]);
-    console.log(result);
 
     if (result[0].length === 0)
       return res.status(404).json({ message: RESPONSE_MESSAGES["404"] });

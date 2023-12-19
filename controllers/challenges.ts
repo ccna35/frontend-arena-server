@@ -1,38 +1,7 @@
 import { Request, Response } from "express";
 import { pool } from "../db/db";
-import { UserRequest } from "../util/token";
 import { ResultSetHeader } from "mysql2";
-
-import { v2 as cloudinary } from "cloudinary";
-// require("dotenv").config();
-
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_KEY,
-  api_secret: process.env.CLOUD_KEY_SECRET,
-});
-
-type UploadedImageType = { type: string; url: string };
-
-async function uploadMultipleImages(req: Request) {
-  const files = req.files as Express.Multer.File[];
-
-  const image_URLs: UploadedImageType[] = [];
-
-  await Promise.all(
-    files.map(async (file) => {
-      const b64 = Buffer.from(file.buffer).toString("base64");
-      let dataURI = "data:" + file.mimetype + ";base64," + b64;
-      const res = await cloudinary.uploader.upload(dataURI, {
-        resource_type: "image",
-        format: "webp",
-      });
-      image_URLs.push({ type: file.fieldname, url: res.secure_url });
-    })
-  );
-
-  return image_URLs;
-}
+import { uploadMultipleImages } from "../util/cloudinary";
 
 const createChallenge = async (req: Request, res: Response) => {
   const image_URLs = await uploadMultipleImages(req);
@@ -44,7 +13,10 @@ const createChallenge = async (req: Request, res: Response) => {
     extra_tips,
     figma,
     difficulty_level,
+    challenge_languages,
   } = req.body;
+
+  const challenge_languages_to_array: string[] = challenge_languages.split("");
 
   const challenge_details = [
     [
@@ -85,8 +57,20 @@ const createChallenge = async (req: Request, res: Response) => {
     const challengeImagesQuery =
       "INSERT INTO challenge_images(image_type,image_link,challenge_id) VALUES ?";
     await pool.query(challengeImagesQuery, [challenge_images_details]);
+
+    // Insert challenge languages, i.e: HTML, CSS, JS.
+    for (let i = 0; i < challenge_languages_to_array.length; i++) {
+      console.log(challenge_languages_to_array[i]);
+
+      const challengeLanguagesQuery =
+        "INSERT INTO challenge_languages(language_id,challenge_id) VALUES ?";
+      await pool.query(challengeLanguagesQuery, [
+        [[challenge_languages_to_array[i], insertId]],
+      ]);
+    }
+
     return res
-      .status(200)
+      .status(201)
       .json({ message: "Challenge was created successfully" });
   } catch (error) {
     console.log(error);
@@ -94,7 +78,7 @@ const createChallenge = async (req: Request, res: Response) => {
   }
 };
 
-const updateChallenge = async (req: UserRequest, res: Response) => {
+const updateChallenge = async (req: Request, res: Response) => {
   const challenge_id = req.params.id;
 
   const {
@@ -179,11 +163,11 @@ const deleteChallenge = async (req: Request, res: Response) => {
 };
 
 const getAllChallenges = async (req: Request, res: Response) => {
-  const query = "SELECT * FROM challenges";
+  const query =
+    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT i.image_link) AS challenge_images, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN challenge_images AS i ON c.id = i.challenge_id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id GROUP BY c.id";
 
   try {
     const result = await pool.query<ResultSetHeader>(query);
-    console.log(result[0]);
 
     return res.status(200).json(result[0]);
   } catch (error) {
@@ -195,11 +179,11 @@ const getAllChallenges = async (req: Request, res: Response) => {
 const getOneChallenge = async (req: Request, res: Response) => {
   const challenge_id = req.params.id;
 
-  const query = "SELECT * FROM challenges WHERE id = ?";
+  const query =
+    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT i.image_link) AS challenge_images, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN challenge_images AS i ON c.id = i.challenge_id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id WHERE c.id = ? GROUP BY c.id";
 
   try {
     const result = await pool.query<ResultSetHeader>(query, [challenge_id]);
-    console.log(result[0]);
 
     return res.status(200).json(result[0]);
   } catch (error) {

@@ -35,7 +35,9 @@ const verifyToken = (req: UserRequest, res: Response, next: NextFunction) => {
   const { jwt: token } = req.cookies;
 
   if (!token) {
-    return res.status(403).send("A token is required for authentication");
+    return res
+      .status(403)
+      .json({ message: "A token is required for authentication" });
   }
 
   try {
@@ -44,7 +46,7 @@ const verifyToken = (req: UserRequest, res: Response, next: NextFunction) => {
     req.user = user_id;
     next();
   } catch (err) {
-    res.status(401).send("Invalid Token");
+    res.status(401).json({ message: "Invalid Token" });
   }
 };
 

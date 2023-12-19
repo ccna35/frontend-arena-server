@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from "cloudinary";
-// require("dotenv").config();
 
 export const cloud = cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,

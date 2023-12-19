@@ -8,14 +8,19 @@ import {
   updateUser,
 } from "../controllers/users";
 import { verifyToken } from "../util/token";
+import {
+  userLoginValidation,
+  userSignUpValidation,
+  userUpdateValidation,
+} from "../middlewares/validation/users";
 
 const router = Router();
 
 // Signup
-router.post("/signup", signup);
+router.post("/signup", userSignUpValidation, signup);
 
 // Login
-router.post("/login", login);
+router.post("/login", userLoginValidation, login);
 
 // Logout
 router.get("/logout", logout);
@@ -30,6 +35,6 @@ router.get("/", getAllUsers);
 router.use(verifyToken);
 
 // Update user route
-router.put("/", updateUser);
+router.put("/", userUpdateValidation, updateUser);
 
 export default router;

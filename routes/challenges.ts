@@ -7,36 +7,16 @@ import {
   updateChallenge,
 } from "../controllers/challenges";
 import { verifyToken } from "../util/token";
-import dotenv from "dotenv";
 import { upload } from "../util/multer";
-dotenv.config();
-
-import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_KEY,
-  api_secret: process.env.CLOUD_KEY_SECRET,
-});
+import { challengeValidation } from "../middlewares/validation/challenges";
 
 const router = Router();
 
 // Add new Challenge
-// router.post("/", createChallenge);
-
-// async function handleUpload(file: string) {
-//   const res = await cloud.uploader.upload(file, {
-//     resource_type: "auto",
-//     format: "webp",
-//   });
-//   return res;
-// }
-
-// Add new Challenge
-router.post("/", upload.any(), createChallenge);
+router.post("/", upload.any(), challengeValidation, createChallenge);
 
 // Update by ID
-router.put("/:id", upload.any(), updateChallenge);
+router.put("/:id", upload.any(), challengeValidation, updateChallenge);
 
 // Get all Challenges
 router.get("/", getAllChallenges);
@@ -48,6 +28,6 @@ router.get("/:id", getOneChallenge);
 router.delete("/:id", deleteChallenge);
 
 // Middleware
-router.use(verifyToken);
+// router.use(verifyToken);
 
 export default router;
