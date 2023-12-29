@@ -9,6 +9,7 @@ import upload from "multer";
 import users from "./routes/users";
 import challenges from "./routes/challenges";
 import submissions from "./routes/submissions";
+import feedbacks from "./routes/feedbacks";
 
 const PORT = process.env.PORT || 3000;
 
@@ -32,6 +33,7 @@ app.use(
 app.use("/users", users);
 app.use("/challenges", challenges);
 app.use("/submissions", submissions);
+app.use("/feedbacks", feedbacks);
 
 // Start the server
 app.listen(PORT, () => {

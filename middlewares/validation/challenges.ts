@@ -15,6 +15,7 @@ export const challengeValidation = (
     difficulty_level: z.string().trim().min(1),
     figma: z
       .string()
+      .trim()
       .url()
       .min(10)
       .max(150)
@@ -22,7 +23,8 @@ export const challengeValidation = (
   });
 
   try {
-    schema.parse(req.body);
+    const result = schema.parse(req.body);
+    req.body = result;
 
     next();
   } catch (err) {

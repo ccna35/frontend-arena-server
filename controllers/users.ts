@@ -12,6 +12,8 @@ const RESPONSE_MESSAGES = {
 const signup = async (req: Request, res: Response) => {
   const { firstName, lastName, email, username, password } = req.body;
 
+  console.log(firstName, lastName);
+
   // Check if user already exists
   const checkQuery =
     "SELECT * FROM user_accounts WHERE email = ? OR username = ?";
@@ -21,8 +23,6 @@ const signup = async (req: Request, res: Response) => {
       email,
       username,
     ]);
-
-    console.log(result);
 
     // This user already exists
     if (result[0].length > 0) {
@@ -46,8 +46,6 @@ const signup = async (req: Request, res: Response) => {
       insertNewUserQuery,
       [values]
     );
-
-    console.log(user_id);
 
     // Generating an access token
     const token = await generateToken(user_id);

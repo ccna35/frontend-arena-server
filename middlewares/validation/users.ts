@@ -21,8 +21,8 @@ export const userSignUpValidation = (
   });
 
   try {
-    schema.parse(req.body);
-
+    const validatedUser = schema.parse(req.body);
+    req.body = validatedUser;
     next();
   } catch (err) {
     console.log(err);
@@ -30,6 +30,7 @@ export const userSignUpValidation = (
     return res.status(400).json(err);
   }
 };
+
 export const userUpdateValidation = (
   req: Request,
   res: Response,
@@ -41,7 +42,8 @@ export const userUpdateValidation = (
   });
 
   try {
-    schema.parse(req.body);
+    const validatedUser = schema.parse(req.body);
+    req.body = validatedUser;
 
     next();
   } catch (err) {
@@ -62,7 +64,8 @@ export const userLoginValidation = (
   });
 
   try {
-    schema.parse(req.body);
+    const validatedUser = schema.parse(req.body);
+    req.body = validatedUser;
 
     next();
   } catch (err) {

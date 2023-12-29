@@ -22,7 +22,8 @@ export const submissionValidation = (
   });
 
   try {
-    schema.parse(req.body);
+    const result = schema.parse(req.body);
+    req.body = result;
 
     next();
   } catch (err) {
