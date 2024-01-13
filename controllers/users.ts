@@ -12,8 +12,6 @@ const RESPONSE_MESSAGES = {
 const signup = async (req: Request, res: Response) => {
   const { firstName, lastName, email, username, password } = req.body;
 
-  console.log(firstName, lastName);
-
   // Check if user already exists
   const checkQuery =
     "SELECT * FROM user_accounts WHERE email = ? OR username = ?";

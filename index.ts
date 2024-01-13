@@ -3,7 +3,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import bodyParser from "body-parser";
-import upload from "multer";
 
 // routes
 import users from "./routes/users";
@@ -24,16 +23,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:3000"],
     credentials: true,
   })
 );
 
 // Routes
-app.use("/users", users);
-app.use("/challenges", challenges);
-app.use("/submissions", submissions);
-app.use("/feedbacks", feedbacks);
+app.use("/api/users", users);
+app.use("/api/challenges", challenges);
+app.use("/api/submissions", submissions);
+app.use("/api/feedbacks", feedbacks);
 
 // Start the server
 app.listen(PORT, () => {
