@@ -192,43 +192,6 @@ const getOneChallenge = async (req: Request, res: Response) => {
   }
 };
 
-// const getChallengesByCategory = (req: UserRequest, res: Response) => {
-//   const user_id = req.user;
-
-//   const category = req.params.id;
-
-//   const query = "SELECT * FROM `notes` WHERE user_id = ? AND category = ?";
-
-//   connection.query(query, [user_id, category], (err, results) => {
-//     if (err) {
-//       console.log(err);
-
-//       res.status(500).send("Internal Server Error");
-//     } else {
-//       res.status(200).json(results);
-//     }
-//   });
-// };
-
-// const getNotesByQuery = (req: UserRequest, res: Response) => {
-//   const user_id = req.user;
-
-//   const searchQuery = req.query.search;
-
-//   const query =
-//     "SELECT * FROM `notes` WHERE user_id = ? AND title LIKE '%?%' OR body LIKE '%?'";
-
-//   connection.query(query, [user_id, searchQuery], (err, results) => {
-//     if (err) {
-//       console.log(err);
-
-//       res.status(500).send("Internal Server Error");
-//     } else {
-//       res.status(200).json(results);
-//     }
-//   });
-// };
-
 export {
   createChallenge,
   updateChallenge,

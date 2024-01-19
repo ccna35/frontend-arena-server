@@ -27,7 +27,4 @@ router.get("/:id", getOneChallenge);
 // Delete by ID
 router.delete("/:id", deleteChallenge);
 
-// Middleware
-// router.use(verifyToken);
-
 export default router;

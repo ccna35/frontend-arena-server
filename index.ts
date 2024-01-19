@@ -9,6 +9,7 @@ import users from "./routes/users";
 import challenges from "./routes/challenges";
 import submissions from "./routes/submissions";
 import feedbacks from "./routes/feedbacks";
+import dashboard from "./routes/dashboard";
 
 const PORT = process.env.PORT || 3000;
 
@@ -33,6 +34,7 @@ app.use("/api/users", users);
 app.use("/api/challenges", challenges);
 app.use("/api/submissions", submissions);
 app.use("/api/feedbacks", feedbacks);
+app.use("/api/dashboard", dashboard);
 
 // Start the server
 app.listen(PORT, () => {
