@@ -12,7 +12,14 @@ export const challengeValidation = (
     challenge_description: z.string().trim().min(10).max(500),
     extra_tips: z.string().trim().min(10).max(500),
     challenge_languages: z.string().trim().min(1),
-    difficulty_level: z.string().trim().min(1),
+    difficulty_level: z
+      .string()
+      .trim()
+      .min(1)
+      .refine(
+        (value) => value.length === 1,
+        "Can't enter more than one number"
+      ),
     figma: z
       .string()
       .trim()

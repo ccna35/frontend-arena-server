@@ -164,7 +164,7 @@ const deleteChallenge = async (req: Request, res: Response) => {
 
 const getAllChallenges = async (req: Request, res: Response) => {
   const query =
-    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT i.image_link) AS challenge_images, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN challenge_images AS i ON c.id = i.challenge_id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id GROUP BY c.id";
+    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT i.image_link) AS challenge_images, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN challenge_images AS i ON c.id = i.challenge_id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id GROUP BY c.id ORDER BY c.createdAt DESC";
 
   try {
     const result = await pool.query<ResultSetHeader>(query);
