@@ -7,6 +7,7 @@ import {
 import {
   createFeedback,
   deleteFeedback,
+  getAllFeedbacks,
   getAllFeedbacksBySubmission,
   getOneFeedback,
   updateFeedback,
@@ -14,8 +15,11 @@ import {
 
 const router = Router();
 
-// Get all Feedbacks
+// Get all Feedbacks By Submission
 router.get("/", getAllFeedbacksBySubmission);
+
+// Get all Feedbacks
+router.get("/all", getAllFeedbacks);
 
 // Get by ID
 router.get("/:id", getOneFeedback);

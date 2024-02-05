@@ -69,6 +69,19 @@ const getAllFeedbacksBySubmission = async (req: Request, res: Response) => {
   }
 };
 
+const getAllFeedbacks = async (req: Request, res: Response) => {
+  const query = "SELECT * FROM feedbacks";
+
+  try {
+    const result = await pool.query<ResultSetHeader>(query);
+
+    return res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Server Error");
+  }
+};
+
 const getOneFeedback = async (req: Request, res: Response) => {
   const feedback_id = req.params.id;
 
@@ -116,6 +129,7 @@ export {
   createFeedback,
   updateFeedback,
   getAllFeedbacksBySubmission,
+  getAllFeedbacks,
   deleteFeedback,
   getOneFeedback,
 };
