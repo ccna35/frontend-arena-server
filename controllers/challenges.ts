@@ -180,7 +180,7 @@ const getOneChallenge = async (req: Request, res: Response) => {
   const challenge_id = req.params.id;
 
   const query =
-    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT i.image_link) AS challenge_images, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN challenge_images AS i ON c.id = i.challenge_id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id WHERE c.id = ? GROUP BY c.id";
+    "SELECT c.challenge_title, c.id, c.createdAt, c.challenge_description,c.extra_tips, c.figma,c.featured_image, d.levelName, c.brief_description, GROUP_CONCAT(DISTINCT l.language_name) AS languages FROM challenges AS c LEFT JOIN challenge_languages AS cl ON c.id = cl.challenge_id LEFT JOIN languages AS l ON cl.language_id = l.id LEFT JOIN difficulty_levels AS d ON c.difficulty_level = d.id WHERE c.id = ? GROUP BY c.id";
 
   try {
     const result = await pool.query<ResultSetHeader>(query, [challenge_id]);
